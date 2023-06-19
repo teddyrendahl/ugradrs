@@ -18,15 +18,20 @@ pub enum Operation {
     Pow(i32),
 }
 
+/// Implementation of an equation value
+///
+/// Actual is kept internally so that Value can be freely cloned
+/// without actually copying data
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Value(Rc<RefCell<ValueInternal>>);
 
+/// Internal holder of Value information
 pub struct ValueInternal {
-    data: f64,
-    children: Vec<Value>,
-    operation: Option<Operation>,
-    gradient: f64,
-    label: Option<String>,
+    pub data: f64,
+    pub children: Vec<Value>,
+    pub operation: Option<Operation>,
+    pub gradient: f64,
+    pub label: Option<String>,
 }
 
 impl Deref for Value {
@@ -50,51 +55,72 @@ impl Debug for ValueInternal {
             .field("gradient", &self.gradient)
             .field("label", &self.label)
             .field("operation", &self.operation)
-            .field("previous", &self.children)
+            .field("children", &self.children.len())
             .finish()
     }
 }
 
 impl Value {
-    pub fn new(value: ValueInternal) -> Self {
+    fn new(value: ValueInternal) -> Self {
         Value(Rc::new(RefCell::new(value)))
     }
 
+    /// Access the internal f64 of the Value
     pub fn data(&self) -> f64 {
         self.borrow().data
     }
 
+    /// Set the internal f64 of the Value
+    pub fn set_data(&self, value: f64) {
+        self.borrow_mut().data = value;
+    }
+
+    /// The gradient of the current value
+    ///
+    /// Will be 0. until the value is included as part of the `backward` call
     pub fn gradient(&self) -> f64 {
         self.borrow().gradient
     }
 
+    /// Zero the gradient value
+    pub fn zero_grad(&self) {
+        self.borrow_mut().gradient = 0.;
+    }
+
+    /// The child nodes of the Value
     pub fn children(&self) -> Vec<Value> {
         self.borrow().children.clone()
     }
 
+    /// The operation that created this node (if any)
     pub fn operation(&self) -> Option<Operation> {
         self.borrow().operation
     }
 
-    pub fn tanh(&self) -> Value {
+    /// Apply the tanh operation to the node, creating a new Value
+    pub fn tanh(self) -> Value {
+        let d = self.borrow().data.tanh();
         Value::new(ValueInternal::new(
-            self.borrow().data.tanh(),
-            vec![self.clone()],
+            d,
+            vec![self],
             Some(Operation::Tanh),
             None,
         ))
     }
 
-    pub fn exp(&self) -> Self {
+    /// Apply the exp operation to the node, creating a new Value
+    pub fn exp(self) -> Self {
+        let d = self.borrow().data.exp();
         Value::new(ValueInternal::new(
-            self.borrow().data.exp(),
-            vec![self.clone()],
+            d,
+            vec![self],
             Some(Operation::Exponent),
             None,
         ))
     }
 
-    pub fn powi(&self, value: i32) -> Self {
+    /// Apply the powi operation to the node, creating a new Value
+    pub fn powi(self, value: i32) -> Self {
         Value::new(ValueInternal::new(
             self.borrow().data.powi(value),
             vec![self.clone()],
@@ -103,6 +129,7 @@ impl Value {
         ))
     }
 
+    /// Apply backward propagation of the gradient for this Value and all children in our graph
     pub fn backward(&self) {
         let mut topo = Vec::new();
         let mut visited = HashSet::new();
@@ -173,7 +200,7 @@ impl Hash for ValueInternal {
     }
 }
 impl ValueInternal {
-    pub fn new(
+    fn new(
         data: f64,
         children: Vec<Value>,
         operation: Option<Operation>,
@@ -294,7 +321,7 @@ mod tests {
         let x2w2 = x2.clone() * w2.clone();
         let x1w1x2w2 = x1w1.clone() + x2w2.clone();
         let n = x1w1x2w2 + b.clone();
-        let o = n.tanh();
+        let o = n.clone().tanh();
         o.backward();
 
         assert_abs_diff_eq!(o.gradient(), 1.0, epsilon = 0.001);

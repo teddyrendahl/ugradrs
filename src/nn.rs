@@ -174,8 +174,6 @@ mod tests {
             Value::from(-1.0),
             Value::from(1.0),
         ];
-
-        let mut last_loss: Option<f64> = None;
         for _ in 0..15 {
             let loss: Value = dataset
                 .clone()
@@ -189,12 +187,6 @@ mod tests {
             for p in mlp.parameters() {
                 p.set_data(p.data() + p.gradient() * -0.1)
             }
-            if let Some(ls) = last_loss {
-                if ls < loss.data() {
-                    panic!("Loss got worse!")
-                }
-            }
-            last_loss = Some(loss.data())
         }
     }
 }

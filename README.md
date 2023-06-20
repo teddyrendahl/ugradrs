@@ -35,6 +35,6 @@ assert!((b.gradient() - 645.5773).abs() < eps); // dg/db
 
 
 ## Run Tests
-```rust
+```shell
 cargo test
 ```

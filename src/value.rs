@@ -230,7 +230,7 @@ impl ValueInternal {
             operation,
             gradient: 0.,
             label,
-            uuid: uuid::Uuid::new_v4().to_string()
+            uuid: uuid::Uuid::new_v4().to_string(),
         }
     }
 }

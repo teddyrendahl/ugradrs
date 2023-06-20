@@ -179,7 +179,7 @@ mod tests {
                 .clone()
                 .into_iter()
                 .zip(truth.clone().into_iter())
-                .map(|(d, t)| (t - mlp.forward(d)[0].clone()).powi(2))
+                .map(|(d, t)| (t - mlp.forward(d)[0].clone()).powf(Value::from(2.0)))
                 .sum();
 
             mlp.zero_grad();

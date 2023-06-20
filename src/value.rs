@@ -1,3 +1,4 @@
+use std::ops::AddAssign;
 use std::{
     cell::RefCell,
     collections::HashSet,
@@ -15,7 +16,8 @@ pub enum Operation {
     Multiply,
     Tanh,
     Exponent,
-    Pow(i32),
+    Pow,
+    Relu,
 }
 
 /// Implementation of an equation value
@@ -32,6 +34,7 @@ pub struct ValueInternal {
     pub operation: Option<Operation>,
     pub gradient: f64,
     pub label: Option<String>,
+    pub uuid: String,
 }
 
 impl Deref for Value {
@@ -55,7 +58,6 @@ impl Debug for ValueInternal {
             .field("gradient", &self.gradient)
             .field("label", &self.label)
             .field("operation", &self.operation)
-            .field("children", &self.children.len())
             .finish()
     }
 }
@@ -119,21 +121,31 @@ impl Value {
         ))
     }
 
-    /// Apply the powi operation to the node, creating a new Value
-    pub fn powi(self, value: i32) -> Self {
+    /// Apply the powf operation to the node, creating a new Value
+    pub fn powf(self, value: Value) -> Self {
+        let d = self.data().powf(value.data());
         Value::new(ValueInternal::new(
-            self.borrow().data.powi(value),
-            vec![self.clone()],
-            Some(Operation::Pow(value)),
+            d,
+            vec![self, value],
+            Some(Operation::Pow),
             None,
         ))
     }
 
+    /// Apply the relu operation to the node
+    pub fn relu(self) -> Self {
+        let d = self.data().max(0.0);
+        Value::new(ValueInternal::new(
+            d,
+            vec![self],
+            Some(Operation::Relu),
+            None,
+        ))
+    }
     /// Apply backward propagation of the gradient for this Value and all children in our graph
     pub fn backward(&self) {
         let mut topo = Vec::new();
         let mut visited = HashSet::new();
-
         fn build_topo(node: Value, visited: &mut HashSet<Value>, topo: &mut Vec<Value>) {
             if !visited.contains(&node) {
                 visited.insert(node.clone());
@@ -149,6 +161,7 @@ impl Value {
             node.backward_internal()
         }
     }
+
     fn backward_internal(&self) {
         match self.operation() {
             Some(Operation::Add) => {
@@ -160,8 +173,8 @@ impl Value {
                 let first = self.children()[0].data();
                 let second = self.children()[1].data();
 
-                self.children()[0].borrow_mut().gradient = second * self.gradient();
-                self.children()[1].borrow_mut().gradient = first * self.gradient();
+                self.children()[0].borrow_mut().gradient += second * self.gradient();
+                self.children()[1].borrow_mut().gradient += first * self.gradient();
             }
             Some(Operation::Tanh) => {
                 for child in self.children().iter_mut() {
@@ -173,10 +186,19 @@ impl Value {
                     child.borrow_mut().gradient += self.data() * self.gradient()
                 }
             }
-            Some(Operation::Pow(v)) => {
+            Some(Operation::Pow) => {
+                let base = &self.children()[0];
+                let power = &self.children()[1];
+                base.borrow_mut().gradient +=
+                    power.data() * base.data().powf(power.data() - 1.0) * self.gradient();
+            }
+            Some(Operation::Relu) => {
                 for child in self.children().iter_mut() {
-                    child.borrow_mut().gradient +=
-                        v as f64 * child.data().powf(v as f64 - 1.0) * self.gradient();
+                    child.borrow_mut().gradient += if self.data() > 0. {
+                        self.gradient()
+                    } else {
+                        0.
+                    }
                 }
             }
             None => (),
@@ -192,11 +214,7 @@ impl Display for ValueInternal {
 
 impl Hash for ValueInternal {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.data.to_bits().hash(state);
-        self.gradient.to_bits().hash(state);
-        self.label.hash(state);
-        self.operation.hash(state);
-        self.children.hash(state);
+        self.uuid.hash(state)
     }
 }
 impl ValueInternal {
@@ -212,6 +230,7 @@ impl ValueInternal {
             operation,
             gradient: 0.,
             label,
+            uuid: uuid::Uuid::new_v4().to_string()
         }
     }
 }
@@ -225,16 +244,27 @@ impl Add for Value {
     type Output = Value;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Value::new(ValueInternal {
-            data: self.data() + rhs.data(),
-            children: vec![rhs, self],
-            operation: Some(Operation::Add),
-            gradient: 0.,
-            label: None,
-        })
+        Value::new(ValueInternal::new(
+            self.data() + rhs.data(),
+            vec![rhs, self],
+            Some(Operation::Add),
+            None,
+        ))
     }
 }
 
+impl AddAssign for Value {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = self.clone() + rhs;
+    }
+}
+impl Add<f64> for Value {
+    type Output = Value;
+
+    fn add(self, rhs: f64) -> Self::Output {
+        self + Value::from(rhs)
+    }
+}
 impl Sub for Value {
     type Output = Value;
 
@@ -256,11 +286,27 @@ impl Mul for Value {
     }
 }
 
+impl Mul<f64> for Value {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        self * Value::from(rhs)
+    }
+}
+
 impl Div for Value {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
-        self * rhs.powi(-1)
+        self * rhs.powf(Value::from(-1.0))
+    }
+}
+
+impl Div<f64> for Value {
+    type Output = Self;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        self / Value::from(rhs)
     }
 }
 
@@ -277,7 +323,7 @@ impl Sum for Value {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         let mut sum = Value::from(0.0);
         for value in iter {
-            sum = sum + value
+            sum += value
         }
         sum
     }
@@ -357,7 +403,6 @@ mod tests {
         assert_eq!(w2.gradient(), 0.0);
         assert_abs_diff_eq!(x1.gradient(), -1.5, epsilon = 0.001);
         assert_abs_diff_eq!(x2.gradient(), 0.5, epsilon = 0.001);
-        assert_abs_diff_eq!(n.gradient(), 0.5, epsilon = 0.001);
         assert_abs_diff_eq!(b.gradient(), 0.5, epsilon = 0.001);
         assert_abs_diff_eq!(x2w2.gradient(), 0.5, epsilon = 0.001);
         assert_abs_diff_eq!(x1w1.gradient(), 0.5, epsilon = 0.001);

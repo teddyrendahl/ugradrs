@@ -7,10 +7,11 @@ use crate::value::Value;
 struct Neuron<const N: usize> {
     weights: [Value; N],
     bias: Value,
+    linear: bool,
 }
 
 impl<const N: usize> Neuron<N> {
-    fn new() -> Self {
+    fn new(linear: bool) -> Self {
         let mut rng = thread_rng();
         Neuron {
             weights: (0..N)
@@ -19,18 +20,24 @@ impl<const N: usize> Neuron<N> {
                 .try_into()
                 .unwrap(),
             bias: Value::from(0.),
+            linear,
         }
     }
 
     fn forward(&self, x: [Value; N]) -> Value {
-        self.weights
+        let v = self
+            .weights
             .clone()
             .into_iter()
             .zip(x.into_iter())
             .map(|(a, b)| a * b)
             .sum::<Value>()
-            .add(self.bias.clone())
-            .tanh()
+            .add(self.bias.clone());
+        if self.linear {
+            v
+        } else {
+            v.relu()
+        }
     }
 
     fn parameters(&self) -> Vec<Value> {
@@ -52,16 +59,16 @@ pub struct SizedLayer<const I: usize, const O: usize> {
 
 impl<const I: usize, const O: usize> Default for SizedLayer<I, O> {
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 
 impl<const I: usize, const O: usize> SizedLayer<I, O> {
     /// Create a layer of the provided size, initialized with random weights
-    pub fn new() -> Self {
+    pub fn new(linear: bool) -> Self {
         Self {
             neurons: (0..O)
-                .map(|_| Neuron::new())
+                .map(|_| Neuron::new(linear))
                 .collect::<Vec<Neuron<I>>>()
                 .try_into()
                 .unwrap(),
@@ -135,16 +142,16 @@ mod tests {
 
     #[test]
     fn test_layer_forward() {
-        let l: SizedLayer<2, 3> = SizedLayer::new();
+        let l: SizedLayer<2, 3> = SizedLayer::new(false);
         let o = l.forward([2.0, 3.0].into_iter().map(Value::from).collect());
         assert_eq!(o.len(), 3);
     }
 
     #[fixture]
     fn mlp() -> Mlp<3, 1> {
-        Mlp::from_layer(SizedLayer::<3, 4>::new())
-            .add_layer(SizedLayer::<4, 4>::new())
-            .add_layer(SizedLayer::new())
+        Mlp::from_layer(SizedLayer::<3, 4>::new(false))
+            .add_layer(SizedLayer::<4, 4>::new(false))
+            .add_layer(SizedLayer::new(true))
     }
 
     #[rstest]

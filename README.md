@@ -33,6 +33,57 @@ assert!((a.gradient() - 138.8338).abs() < eps); // dg/da
 assert!((b.gradient() - 645.5773).abs() < eps); // dg/db
 ```
 
+The library houses a small API for building simple Multi-Layer Perceptrons (MLPs). Both the `Mlp` and the `SizedLayer`
+have their input and output dimensions captured in the Rust typing system. This means that mismatches in input data
+and consecutive layer sizes are caught at compile time!
+```rust
+use ugradrs::nn::{Mlp, SizedLayer};
+
+// By specifying the size of the hidden layer and the dimensions we ultimately want for the perceptron,
+// the correct size of the input and output layers can be determined via the typing system.
+let mlp: Mlp<2, 1> = Mlp::from_layer(SizedLayer::new(false)) // Adds a non-linear SizeLayer::<2, 16>
+    .add_layer(SizedLayer::<16, 16>::new(false)) 
+    .add_layer(SizedLayer::new(true)); // Creates a linear SizeLayer::<16, 1>
+```
+
+To see it in action, look at the `make-moons` example
+```shell
+$ cargo run --example make-moons --release
+```
+
+```shell
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+* * * * * * * * * * * * * * - - * * * * * * * * * * * * * - - 
+* * * * * * * * * * * * * - - - - - * * * * * * * * * - - - - 
+* * * * * * * * * * * * * - - - - - - * * * * * * * - - - - - 
+* * * * * * * * * * * * - - - - - - - - * * * * * - - - - - - 
+* * * * * * * * * * * - - - - - - - - - - * * * * - - - - - - 
+* * * * * * * * * - - - - - - - - - - - - - * * - - - - - - - 
+* * * * * * * - - - - - - - - - - - - - - - - - - - - - - - - 
+* * * * * - - - - - - - - - - - - - - - - - - - - - - - - - - 
+* * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+```
 
 ## Run Tests
 ```shell

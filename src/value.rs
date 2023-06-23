@@ -20,6 +20,20 @@ pub enum Operation {
     Relu,
 }
 
+impl From<Operation> for String {
+    fn from(value: Operation) -> Self {
+        match value {
+            Operation::Add => "+",
+            Operation::Multiply => "*",
+            Operation::Tanh => "tanh",
+            Operation::Exponent => "e^",
+            Operation::Relu => "ReLU",
+            Operation::Pow => "**",
+        }
+        .to_string()
+    }
+}
+
 /// Implementation of an equation value
 ///
 /// Actual is kept internally so that Value can be freely cloned
@@ -320,8 +334,8 @@ impl PartialEq for ValueInternal {
     }
 }
 impl Sum for Value {
-    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        let mut sum = Value::from(0.0);
+    fn sum<I: Iterator<Item = Self>>(mut iter: I) -> Self {
+        let mut sum = iter.next().unwrap();
         for value in iter {
             sum += value
         }

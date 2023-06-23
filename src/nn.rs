@@ -4,14 +4,14 @@ use std::ops::Add;
 use crate::value::Value;
 
 #[derive(Debug)]
-struct Neuron<const N: usize> {
+pub struct Neuron<const N: usize> {
     weights: [Value; N],
     bias: Value,
     linear: bool,
 }
 
 impl<const N: usize> Neuron<N> {
-    fn new(linear: bool) -> Self {
+    pub fn new(linear: bool) -> Self {
         let mut rng = thread_rng();
         Neuron {
             weights: (0..N)
@@ -24,7 +24,7 @@ impl<const N: usize> Neuron<N> {
         }
     }
 
-    fn forward(&self, x: [Value; N]) -> Value {
+    pub fn forward(&self, x: [Value; N]) -> Value {
         let v = self
             .weights
             .clone()

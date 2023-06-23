@@ -95,6 +95,7 @@ You can also visualize created graphs with the `draw_graph` optional feature.
     y.backward(); // Perform back-propagation to populate gradient fields
     draw_dot(y, "relu.dot").expect("Failed to create graph");
 ```
+![ugradrs](https://github.com/teddyrendahl/ugradrs/blob/assets/relu.svg)
 Or draw an entire Neuron:
 ```rust
     use ugradrs::draw_dot::draw_dot;
@@ -106,6 +107,7 @@ Or draw an entire Neuron:
     y.backward(); // Perform back-propagation to populate gradient fields
     draw_dot(y, "neuron.dot").expect("Failed to create graph");
 ```
+![ugradrs](https://github.com/teddyrendahl/ugradrs/blob/assets/neuron.svg)
 
 To try it yourself run:
 ```shell

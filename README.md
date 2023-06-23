@@ -85,6 +85,33 @@ $ cargo run --example make-moons --release
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 ```
 
+You can also visualize created graphs with the `draw_graph` optional feature. 
+```rust
+    use ugradrs::draw_dot::draw_dot;
+    use ugradrs::value::Value;
+
+    let x = Value::from(1.0);
+    let y = (x * 2.0 + 1.0).relu();
+    y.backward(); // Perform back-propagation to populate gradient fields
+    draw_dot(y, "relu.dot").expect("Failed to create graph");
+```
+Or draw an entire Neuron:
+```rust
+    use ugradrs::draw_dot::draw_dot;
+    use ugradrs::nn::Neuron;
+    use ugradrs::value::Value;
+
+    let n: Neuron<2> = Neuron::new(false);
+    let y = n.forward([1.0.into(), (-2.0).into()]);
+    y.backward(); // Perform back-propagation to populate gradient fields
+    draw_dot(y, "neuron.dot").expect("Failed to create graph");
+```
+
+To try it yourself run:
+```shell
+cargo run --example draw_dot --features draw_graph
+```
+
 ## Run Tests
 ```shell
 cargo test

@@ -1,7 +1,7 @@
 pub mod nn;
 pub mod value;
 
-#[cfg(feature ="draw_graph")]
+#[cfg(feature = "draw_graph")]
 pub mod draw_dot {
     use crate::value::Value;
     use petgraph::dot::{Config, Dot};
@@ -37,7 +37,11 @@ pub mod draw_dot {
         let mut node_graph = HashMap::new();
 
         for n in nodes {
-            let idx = g.add_node(format!("{{ data {:.4} | grad {:.4} }}", n.data(), n.gradient()));
+            let idx = g.add_node(format!(
+                "{{ data {:.4} | grad {:.4} }}",
+                n.data(),
+                n.gradient()
+            ));
             node_graph.insert(n.clone(), idx);
             // A node that is the result of an operation has a separate bubble to connect to
             if let Some(op) = n.operation() {
